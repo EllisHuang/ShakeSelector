@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ShakeSelector</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="result_title">結果</string>
+    <string name="result_msg">result</string>
+    <string name="add_btn">新增</string>
+    <string name="action_add">新增</string>
+    <string name="action_close">離開</string>
+    <string name="main_title">Shake Selector</string>
+
+</resources>
