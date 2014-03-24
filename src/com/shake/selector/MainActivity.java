@@ -1,30 +1,28 @@
 package com.shake.selector;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.app.LoaderManager;
 import android.app.Service;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
+import android.content.Loader;
+import android.database.Cursor;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 
-public class MainActivity extends ListActivity implements SensorEventListener {
+public class MainActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor>, SensorEventListener {
 
 	private static final int ACTIVITY_ITEM_ADD = 1000;
 	private SensorManager sensorManager;
@@ -33,6 +31,8 @@ public class MainActivity extends ListActivity implements SensorEventListener {
 	private long lastTime = 0;
 	private float lastX = 0, lastY = 0, lastZ = 0;
 	protected boolean alerted = false;
+	private DB mDbHelper;
+	private static final int DB_LOADER = 0;
 
 	private List<String> arrayList;
 	private ArrayAdapter<String> arrayAdapter;
@@ -41,20 +41,30 @@ public class MainActivity extends ListActivity implements SensorEventListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		mDbHelper = new DB(this).open();
+		getLoaderManager().initLoader(DB_LOADER, null, this);
+		
 		arrayList = new ArrayList<String>();
 		arrayAdapter = new ArrayAdapter<String>(this,
 				 android.R.layout.simple_list_item_1, arrayList);
 
-		SharedPreferences spref = PreferenceManager.getDefaultSharedPreferences(this);
-		Set<String> hashSet = spref.getStringSet("KEY_STR_SET", null);
+		/*SharedPreferences spref = PreferenceManager.getDefaultSharedPreferences(this);
+		/Set<String> hashSet = spref.getStringSet("KEY_STR_SET", null);
 		
 		if (hashSet != null) {
 			arrayList.clear();
 			arrayList.addAll(hashSet);
-		}
+		}*/
 
-		setListAdapter(arrayAdapter);
 		sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+	}
+
+
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		mDbHelper.close();
 	}
 
 
@@ -79,12 +89,12 @@ public class MainActivity extends ListActivity implements SensorEventListener {
 	protected void onPause() {
 		super.onPause();
 
-		if (arrayList != null) {
+		/*if (arrayList != null) {
 			SharedPreferences spref = PreferenceManager.getDefaultSharedPreferences(this);
 			Editor editor = spref.edit();
 			editor.putStringSet("KEY_STR_SET", new HashSet<String>(arrayList));
 			editor.commit();
-		}
+		}*/
 		
 		sensorManager.unregisterListener(this);
 	}
@@ -170,9 +180,40 @@ public class MainActivity extends ListActivity implements SensorEventListener {
 				String item_name = bundle.getString("ITEM_NAME");
 				arrayList.add(item_name);
 				setListAdapter(arrayAdapter);
+				mDbHelper.add(item_name);
 				break;
 			}
 		}
+		
+	}
+
+	@Override
+	public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+		// TODO Auto-generated method stub
+		switch (id) {
+			case DB_LOADER:
+				return new DBCursorLoader(getApplicationContext(), mDbHelper);
+		}
+		
+		return null;
+	}
+
+	@Override
+	public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+		// TODO Auto-generated method stub
+		if (cursor != null && cursor.getCount() > 0) {
+			arrayList.clear();
+			while (cursor.moveToNext()) {
+				arrayList.add(cursor.getString( 1 ));
+			}
+			
+			setListAdapter(arrayAdapter);
+		}
+	}
+
+	@Override
+	public void onLoaderReset(Loader<Cursor> arg0) {
+		// TODO Auto-generated method stub
 		
 	}
 }
