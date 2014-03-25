@@ -1,6 +1,7 @@
 package com.shake.selector;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -20,7 +21,6 @@ import android.os.Bundle;
 import android.os.Vibrator;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
 
 public class MainActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor>, SensorEventListener {
 
@@ -34,8 +34,8 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 	private DB mDbHelper;
 	private static final int DB_LOADER = 0;
 
-	private List<String> arrayList;
-	private ArrayAdapter<String> arrayAdapter;
+	private  List<HashMap<String, Object>> arrayList;
+	private SelItemAdapter itemAdapter;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -44,18 +44,8 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 		mDbHelper = new DB(this).open();
 		getLoaderManager().initLoader(DB_LOADER, null, this);
 		
-		arrayList = new ArrayList<String>();
-		arrayAdapter = new ArrayAdapter<String>(this,
-				 android.R.layout.simple_list_item_1, arrayList);
-
-		/*SharedPreferences spref = PreferenceManager.getDefaultSharedPreferences(this);
-		/Set<String> hashSet = spref.getStringSet("KEY_STR_SET", null);
-		
-		if (hashSet != null) {
-			arrayList.clear();
-			arrayList.addAll(hashSet);
-		}*/
-
+		arrayList = new ArrayList<HashMap<String, Object>>();
+		itemAdapter =  new SelItemAdapter(this, R.layout.selector_item, arrayList);
 		sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 	}
 
@@ -89,13 +79,6 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 	protected void onPause() {
 		super.onPause();
 
-		/*if (arrayList != null) {
-			SharedPreferences spref = PreferenceManager.getDefaultSharedPreferences(this);
-			Editor editor = spref.edit();
-			editor.putStringSet("KEY_STR_SET", new HashSet<String>(arrayList));
-			editor.commit();
-		}*/
-		
 		sensorManager.unregisterListener(this);
 	}
 
@@ -140,7 +123,8 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 		int idx = ran.nextInt(arrayList.size());
 		new AlertDialog.Builder(MainActivity.this)
 			.setTitle(R.string.result_title)
-			.setMessage(arrayList.get(idx))
+			//.setMessage(arrayList.get(idx))
+			.setMessage(arrayList.get(idx).get( "title" ).toString())
 			.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 				
 				@Override
@@ -178,8 +162,12 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 			case ACTIVITY_ITEM_ADD:
 				Bundle bundle = data.getExtras();
 				String item_name = bundle.getString("ITEM_NAME");
-				arrayList.add(item_name);
-				setListAdapter(arrayAdapter);
+				//arrayList.add(item_name);
+				HashMap<String, Object> map = new  HashMap<String, Object>();
+				map.put( "title" ,  item_name);
+				arrayList.add(map);
+				//setListAdapter(arrayAdapter);
+				setListAdapter(itemAdapter);
 				mDbHelper.add(item_name);
 				break;
 			}
@@ -204,10 +192,14 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 		if (cursor != null && cursor.getCount() > 0) {
 			arrayList.clear();
 			while (cursor.moveToNext()) {
-				arrayList.add(cursor.getString( 1 ));
+				//arrayList.add(cursor.getString( 1 ));
+				HashMap<String, Object> map = new  HashMap<String, Object>();
+				map.put( "title" ,  cursor.getString( 1 ));
+				arrayList.add(map);
 			}
 			
-			setListAdapter(arrayAdapter);
+			//setListAdapter(arrayAdapter);
+			setListAdapter(itemAdapter);
 		}
 	}
 
