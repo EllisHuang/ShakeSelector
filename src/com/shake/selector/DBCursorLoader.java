@@ -1,8 +1,13 @@
 package com.shake.selector;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import android.content.Context;
 import android.content.CursorLoader;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 public class DBCursorLoader extends CursorLoader{
 

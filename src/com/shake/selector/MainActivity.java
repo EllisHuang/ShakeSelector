@@ -1,5 +1,6 @@
 package com.shake.selector;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,17 +14,25 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
 
 public class MainActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor>, SensorEventListener {
 
+	//private static final String LOG_TAG = "ShakeSel";
+	private static final int DB_LOADER = 0;
 	private static final int ACTIVITY_ITEM_ADD = 1000;
 	private SensorManager sensorManager;
 	private int speed = 3000;
@@ -32,9 +41,8 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 	private float lastX = 0, lastY = 0, lastZ = 0;
 	protected boolean alerted = false;
 	private DB mDbHelper;
-	private static final int DB_LOADER = 0;
 
-	private  List<HashMap<String, Object>> arrayList;
+	protected List<HashMap<String, Object>> arrayList;
 	private SelItemAdapter itemAdapter;
 	
 	@Override
@@ -56,7 +64,6 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 		super.onDestroy();
 		mDbHelper.close();
 	}
-
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -121,10 +128,18 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 	{
 		Random ran = new Random();
 		int idx = ran.nextInt(arrayList.size());
+		LayoutInflater inflater = LayoutInflater.from(this);
+		View dlg_view = inflater.inflate(R.layout.dialog_item, null);
+		ImageView img = (ImageView) dlg_view.findViewById(R.id.dlg_img);
+		Bitmap bitmap = (Bitmap)arrayList.get(idx).get("bitmap");
+		if (bitmap != null) {
+			img.setImageBitmap(bitmap);
+		}
+		
 		new AlertDialog.Builder(MainActivity.this)
-			.setTitle(R.string.result_title)
-			//.setMessage(arrayList.get(idx))
-			.setMessage(arrayList.get(idx).get( "title" ).toString())
+			.setTitle(arrayList.get(idx).get("title").toString())
+			//.setMessage(arrayList.get(idx).get("title").toString())
+			.setView(dlg_view)
 			.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 				
 				@Override
@@ -152,6 +167,64 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 		return super.onOptionsItemSelected(item);
 	}
 
+	private class DbAddAsyncTask extends AsyncTask<Bundle, Void, Bundle> {
+
+		@Override
+		protected Bundle doInBackground(Bundle... params) {
+			// TODO Auto-generated method stub
+			Bundle bundle = params[0];
+			Bitmap bitmap = bundle.getParcelable("ITEM_BMP");
+			
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();    
+			bitmap.compress(Bitmap.CompressFormat.PNG,  100 , baos);
+			
+			Bundle postBundle = new Bundle();
+			postBundle.putByteArray("ITEM_PHOTO", baos.toByteArray());
+			postBundle.putString("ITEM_NAME", bundle.getString("ITEM_NAME"));
+			
+			return postBundle;
+		}
+		
+		@Override
+		protected void onPostExecute(Bundle bundle) {
+			// TODO Auto-generated method stub
+			mDbHelper.add(bundle);
+		}
+	}
+
+	private class ItemloadAsyncTask extends AsyncTask<Cursor, Void, Integer> {
+
+		@Override
+		protected Integer doInBackground(Cursor... params) {
+			// TODO Auto-generated method stub
+			Cursor cursor = params[0];
+			if (cursor != null && cursor.getCount() > 0) {
+				arrayList.clear();
+				while (cursor.moveToNext()) {
+					byte [] photo = cursor.getBlob(cursor.getColumnIndex("photo"));
+					String name = cursor.getString(cursor.getColumnIndex("item"));
+
+					HashMap<String, Object> map = new  HashMap<String, Object>();
+					map.put("title",  name);
+					if (photo != null) {
+						Bitmap bitmap = BitmapFactory.decodeByteArray(photo,  0 , photo.length);
+						map.put("bitmap", bitmap);
+					}
+
+					arrayList.add(map);
+				}
+			}
+			
+			return 0;
+		}
+	
+		@Override
+		protected void onPostExecute(Integer result) {
+			// TODO Auto-generated method stub
+			setListAdapter(itemAdapter);
+		}
+	}
+	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// TODO Auto-generated method stub
@@ -161,14 +234,14 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 			switch (requestCode) {
 			case ACTIVITY_ITEM_ADD:
 				Bundle bundle = data.getExtras();
+				Bitmap bitmap = bundle.getParcelable("ITEM_BMP");
 				String item_name = bundle.getString("ITEM_NAME");
-				//arrayList.add(item_name);
 				HashMap<String, Object> map = new  HashMap<String, Object>();
-				map.put( "title" ,  item_name);
+				map.put("title",  item_name);
+				map.put("bitmap", bitmap);
 				arrayList.add(map);
-				//setListAdapter(arrayAdapter);
 				setListAdapter(itemAdapter);
-				mDbHelper.add(item_name);
+				new DbAddAsyncTask().execute(bundle);
 				break;
 			}
 		}
@@ -189,18 +262,7 @@ public class MainActivity extends ListActivity implements LoaderManager.LoaderCa
 	@Override
 	public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
 		// TODO Auto-generated method stub
-		if (cursor != null && cursor.getCount() > 0) {
-			arrayList.clear();
-			while (cursor.moveToNext()) {
-				//arrayList.add(cursor.getString( 1 ));
-				HashMap<String, Object> map = new  HashMap<String, Object>();
-				map.put( "title" ,  cursor.getString( 1 ));
-				arrayList.add(map);
-			}
-			
-			//setListAdapter(arrayAdapter);
-			setListAdapter(itemAdapter);
-		}
+		new ItemloadAsyncTask().execute(cursor);
 	}
 
 	@Override

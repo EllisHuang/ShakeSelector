@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Bundle;
 
 public class DB{
 
@@ -56,9 +57,19 @@ public class DB{
 	}
 
 	// add an entry
-	public long add(String item) {
-	    ContentValues args = new ContentValues();
-	    args.put("item", item);
+	//public long add(String item) {
+	public long add(Bundle bundle) {
+		byte [] photo = bundle.getByteArray("ITEM_PHOTO");
+		String item_name = bundle.getString("ITEM_NAME");
+
+		ContentValues args = new ContentValues();
+		args.put("photo", photo);
+		//args.put("item", item);
+		args.put("item", item_name);
+	    //Bitmap bm;
+	    //ByteArrayOutputStream baos = new ByteArrayOutputStream();    
+	    //bm.compress(Bitmap.CompressFormat.PNG,  100 , baos);
+	    //args.put("photo", baos.toByteArray());
 
 	    return db.insert("selector", null, args);
 	}

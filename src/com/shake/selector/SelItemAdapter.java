@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +37,7 @@ public class SelItemAdapter extends ArrayAdapter<HashMap<String, Object>>{
 		if (map != null) {
 			//img.setBackgroundResource((Integer) map.get( "img" ));
 			title.setText(map.get( "title" ).toString());
+			img.setImageBitmap((Bitmap)map.get("bitmap"));
 		}
 		
 		return convertView;
